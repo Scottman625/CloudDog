@@ -1,29 +1,29 @@
 #include "mainwindow.h"
 #include <QApplication>
 #include <logindialog.h>
-#include <QTextCodec>
 #include <QDebug>
+#include <QProcess>
 #ifdef Q_OS_WIN
 #include <windows.h>
 #endif
 
 int main(int argc, char *argv[])
 {
+    // 設定環境變數以支援UTF-8
+    qputenv("QT_LOGGING_RULES", "qt.qpa.*=false");
+    qputenv("QT_LOGGING_TO_CONSOLE", "1");
+    
+    // 強制設定UTF-8編碼
+    qputenv("QT_QPA_PLATFORM", "windows:fontengine=freetype");
+    
     QApplication a(argc, argv);
     
-    // 設定字符編碼以解決中文亂碼問題
-    #if (QT_VERSION <= QT_VERSION_CHECK(5,0,0))
-        QTextCodec *codec = QTextCodec::codecForName("UTF-8");
-        QTextCodec::setCodecForLocale(codec);
-        QTextCodec::setCodecForCStrings(codec);
-        QTextCodec::setCodecForTr(codec);
-    #else
-        QTextCodec::setCodecForLocale(QTextCodec::codecForName("UTF-8"));
-    #endif
-    
-    // 設定控制台輸出編碼
+    // 設定控制台輸出編碼 (Qt 6中不需要QTextCodec)
     #ifdef Q_OS_WIN
         SetConsoleOutputCP(CP_UTF8);
+        SetConsoleCP(CP_UTF8);
+        // 設定控制台代碼頁
+        system("chcp 65001 > nul");
     #endif
     
 //    MainWindow w;

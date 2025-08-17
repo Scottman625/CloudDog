@@ -13,9 +13,9 @@ EQ            = =
 
 CC            = gcc
 CXX           = g++
-DEFINES       = -DUNICODE -D_UNICODE -DWIN32 -DMINGW_HAS_SECURE_API=1 -DQT_DEPRECATED_WARNINGS -DQT_QML_DEBUG -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_CORE_LIB -DQT_NEEDS_QMAIN
+DEFINES       = -DUNICODE -D_UNICODE -DWIN32 -DMINGW_HAS_SECURE_API=1 -DQT_DEPRECATED_WARNINGS -DUNICODE -D_UNICODE -DQT_QML_DEBUG -DQT_WIDGETS_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_CORE_LIB -DQT_NEEDS_QMAIN
 CFLAGS        = -fno-keep-inline-dllexport -g -Wall -Wextra -Wextra $(DEFINES)
-CXXFLAGS      = -fno-keep-inline-dllexport -g -Wall -Wextra -Wextra -fexceptions -mthreads $(DEFINES)
+CXXFLAGS      = -fno-keep-inline-dllexport -finput-charset=UTF-8 -fexec-charset=UTF-8 -g -Wall -Wextra -Wextra -fexceptions -mthreads $(DEFINES)
 INCPATH       = -I../../../CloudDog -I. -ID:/QT/6.9.1/mingw_64/include -ID:/QT/6.9.1/mingw_64/include/QtWidgets -ID:/QT/6.9.1/mingw_64/include/QtGui -ID:/QT/6.9.1/mingw_64/include/QtNetwork -ID:/QT/6.9.1/mingw_64/include/QtCore -Idebug -I. -IC:/VulkanSDK/1.3.296.0/include -ID:/QT/6.9.1/mingw_64/mkspecs/win32-g++ 
 LINKER      =        g++
 LFLAGS        =        -Wl,-subsystem,windows -mthreads
@@ -230,7 +230,7 @@ compiler_moc_predefs_make_all: debug/moc_predefs.h
 compiler_moc_predefs_clean:
 	-$(DEL_FILE) debug\moc_predefs.h
 debug/moc_predefs.h: D:/QT/6.9.1/mingw_64/mkspecs/features/data/dummy.cpp
-	g++ -fno-keep-inline-dllexport -g -Wall -Wextra -Wextra -dM -E -o debug\moc_predefs.h D:\QT\6.9.1\mingw_64\mkspecs\features\data\dummy.cpp
+	g++ -fno-keep-inline-dllexport -finput-charset=UTF-8 -fexec-charset=UTF-8 -g -Wall -Wextra -Wextra -dM -E -o debug\moc_predefs.h D:\QT\6.9.1\mingw_64\mkspecs\features\data\dummy.cpp
 
 compiler_moc_header_make_all: debug/moc_buttongroup.cpp debug/moc_downloadwidget.cpp debug/moc_filedataprogress.cpp debug/moc_filepropertyinfodialog.cpp debug/moc_mainwindow.cpp debug/moc_logindialog.cpp debug/moc_myfilewidget.cpp debug/moc_mymenu.cpp debug/moc_networkdata.cpp debug/moc_sharewidget.cpp debug/moc_titlewidget.cpp debug/moc_transformwidget.cpp
 compiler_moc_header_clean:
@@ -4424,7 +4424,7 @@ debug/buttongroup.o: ../../buttongroup.cpp ../../buttongroup.h \
 		D:/QT/6.9.1/mingw_64/include/QtCore/QMap \
 		D:/QT/6.9.1/mingw_64/include/QtCore/QSignalMapper \
 		D:/QT/6.9.1/mingw_64/include/QtCore/qsignalmapper.h \
-		ui_buttongroup.h \
+		../../ui_buttongroup.h \
 		D:/QT/6.9.1/mingw_64/include/QtCore/QVariant \
 		D:/QT/6.9.1/mingw_64/include/QtGui/QIcon \
 		D:/QT/6.9.1/mingw_64/include/QtWidgets/QApplication \
@@ -5122,7 +5122,7 @@ debug/downloadwidget.o: ../../downloadwidget.cpp ../../downloadwidget.h \
 		D:/QT/6.9.1/mingw_64/include/QtCore/QMetaType \
 		../../des.h \
 		../../fileinfo.h \
-		ui_downloadwidget.h \
+		../../ui_downloadwidget.h \
 		D:/QT/6.9.1/mingw_64/include/QtWidgets/QApplication \
 		D:/QT/6.9.1/mingw_64/include/QtWidgets/qapplication.h \
 		D:/QT/6.9.1/mingw_64/include/QtWidgets/QHeaderView \
@@ -5366,7 +5366,7 @@ debug/filedataprogress.o: ../../filedataprogress.cpp ../../filedataprogress.h \
 		D:/QT/6.9.1/mingw_64/include/QtGui/qinputmethod.h \
 		D:/QT/6.9.1/mingw_64/include/QtCore/qlocale.h \
 		D:/QT/6.9.1/mingw_64/include/QtGui/qguiapplication_platform.h \
-		ui_filedataprogress.h \
+		../../ui_filedataprogress.h \
 		D:/QT/6.9.1/mingw_64/include/QtCore/QVariant \
 		D:/QT/6.9.1/mingw_64/include/QtWidgets/QApplication \
 		D:/QT/6.9.1/mingw_64/include/QtWidgets/qapplication.h \
@@ -5588,7 +5588,7 @@ debug/filepropertyinfodialog.o: ../../filepropertyinfodialog.cpp ../../fileprope
 		D:/QT/6.9.1/mingw_64/include/QtCore/QString \
 		D:/QT/6.9.1/mingw_64/include/QtCore/QStringList \
 		../../fileinfo.h \
-		ui_filepropertyinfodialog.h \
+		../../ui_filepropertyinfodialog.h \
 		D:/QT/6.9.1/mingw_64/include/QtCore/QVariant \
 		D:/QT/6.9.1/mingw_64/include/QtWidgets/QApplication \
 		D:/QT/6.9.1/mingw_64/include/QtWidgets/qapplication.h \
@@ -5955,7 +5955,10 @@ debug/main.o: ../../main.cpp ../../mainwindow.h \
 		D:/QT/6.9.1/mingw_64/include/QtWidgets/qapplication.h \
 		../../logindialog.h \
 		D:/QT/6.9.1/mingw_64/include/QtWidgets/QDialog \
-		D:/QT/6.9.1/mingw_64/include/QtWidgets/qdialog.h
+		D:/QT/6.9.1/mingw_64/include/QtWidgets/qdialog.h \
+		D:/QT/6.9.1/mingw_64/include/QtCore/QDebug \
+		D:/QT/6.9.1/mingw_64/include/QtCore/QProcess \
+		D:/QT/6.9.1/mingw_64/include/QtCore/qprocess.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o debug\main.o ..\..\main.cpp
 
 debug/mainwindow.o: ../../mainwindow.cpp ../../mainwindow.h \
@@ -6191,7 +6194,7 @@ debug/mainwindow.o: ../../mainwindow.cpp ../../mainwindow.h \
 		../../des.h \
 		../../transformwidget.h \
 		D:/QT/6.9.1/mingw_64/include/QtWidgets/QWidget \
-		ui_mainwindow.h \
+		../../ui_mainwindow.h \
 		D:/QT/6.9.1/mingw_64/include/QtWidgets/QApplication \
 		D:/QT/6.9.1/mingw_64/include/QtWidgets/qapplication.h \
 		D:/QT/6.9.1/mingw_64/include/QtWidgets/QStackedWidget \
@@ -6466,7 +6469,7 @@ debug/logindialog.o: ../../logindialog.cpp ../../logindialog.h \
 		D:/QT/6.9.1/mingw_64/include/QtGui/QMouseEvent \
 		../../transformwidget.h \
 		D:/QT/6.9.1/mingw_64/include/QtWidgets/QWidget \
-		ui_logindialog.h \
+		../../ui_logindialog.h \
 		D:/QT/6.9.1/mingw_64/include/QtWidgets/QApplication \
 		D:/QT/6.9.1/mingw_64/include/QtWidgets/qapplication.h \
 		D:/QT/6.9.1/mingw_64/include/QtWidgets/QCheckBox \
@@ -6773,7 +6776,7 @@ debug/myfilewidget.o: ../../myfilewidget.cpp ../../myfilewidget.h \
 		D:/QT/6.9.1/mingw_64/include/QtCore/qfiledevice.h \
 		D:/QT/6.9.1/mingw_64/include/QtCore/QTimer \
 		D:/QT/6.9.1/mingw_64/include/QtCore/qtimer.h \
-		ui_myfilewidget.h \
+		../../ui_myfilewidget.h \
 		D:/QT/6.9.1/mingw_64/include/QtWidgets/QApplication \
 		D:/QT/6.9.1/mingw_64/include/QtWidgets/qapplication.h \
 		D:/QT/6.9.1/mingw_64/include/QtWidgets/QListWidget \
@@ -7431,7 +7434,7 @@ debug/sharewidget.o: ../../sharewidget.cpp ../../sharewidget.h \
 		D:/QT/6.9.1/mingw_64/include/QtCore/qfiledevice.h \
 		D:/QT/6.9.1/mingw_64/include/QtCore/QTimer \
 		D:/QT/6.9.1/mingw_64/include/QtCore/qtimer.h \
-		ui_sharewidget.h \
+		../../ui_sharewidget.h \
 		D:/QT/6.9.1/mingw_64/include/QtWidgets/QApplication \
 		D:/QT/6.9.1/mingw_64/include/QtWidgets/qapplication.h \
 		D:/QT/6.9.1/mingw_64/include/QtWidgets/QListWidget \
@@ -7689,7 +7692,7 @@ debug/titlewidget.o: ../../titlewidget.cpp ../../titlewidget.h \
 		D:/QT/6.9.1/mingw_64/include/QtCore/qlocale.h \
 		D:/QT/6.9.1/mingw_64/include/QtGui/qguiapplication_platform.h \
 		D:/QT/6.9.1/mingw_64/include/QtCore/QPoint \
-		ui_titlewidget.h \
+		../../ui_titlewidget.h \
 		D:/QT/6.9.1/mingw_64/include/QtCore/QVariant \
 		D:/QT/6.9.1/mingw_64/include/QtWidgets/QApplication \
 		D:/QT/6.9.1/mingw_64/include/QtWidgets/qapplication.h \
@@ -8142,7 +8145,7 @@ debug/transformwidget.o: ../../transformwidget.cpp ../../transformwidget.h \
 		D:/QT/6.9.1/mingw_64/include/QtNetwork/qsslpresharedkeyauthenticator.h \
 		D:/QT/6.9.1/mingw_64/include/QtCore/QMetaType \
 		../../des.h \
-		ui_transformwidget.h \
+		../../ui_transformwidget.h \
 		D:/QT/6.9.1/mingw_64/include/QtWidgets/QApplication \
 		D:/QT/6.9.1/mingw_64/include/QtWidgets/qapplication.h \
 		D:/QT/6.9.1/mingw_64/include/QtWidgets/QHBoxLayout \

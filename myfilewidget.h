@@ -45,6 +45,7 @@ private:
 
     QTimer m_uploadFileTimer;
     QTimer m_downloadFileTimer;
+    bool m_isUploading;  // 防止同時上傳多個文件
 
 
     MyMenu *m_menuItem;

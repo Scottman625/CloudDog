@@ -8,6 +8,8 @@
 #include <QNetworkAccessManager>
 #include <QNetworkRequest>
 #include <QNetworkReply>
+#include <QHttpMultiPart>
+#include <QHttpPart>
 #include <QMessageBox>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -299,226 +301,264 @@ void MyFileWidget::addUploadFiles()
 
 void MyFileWidget::uploadFile(UploadFileInfo *uploadFileInfo)
 {
-    //上传文件到服务器
-
-/*
-------WebKitFormBoundaryDQAR0QX1ojAyzAre\r\n
-Content-Disposition: form-data; name="file"; filename="logo.png"\r\n
-Content-Type: image/png\r\n
-\r\n
-真正的文件内容\r\n
-------WebKitFormBoundaryDQAR0QX1ojAyzAre
-*/
-
-    QFile file(uploadFileInfo->filePath);
-    file.open(QIODevice::ReadOnly | QIODevice::Text);
-
-    LoginInfoInstance *login = LoginInfoInstance::getInstance();
-
-    QString boundary = m_common->getBoundary();
-    QByteArray data;
-    data.append(boundary.toUtf8());
-    data.append("\r\n");
-
-    data.append("Content-Disposition: form-data; ");
-    data.append(QString("user=\"%1\" filename=\"%2\" md5=\"%3\" size=%4")
-                .arg(login->user())
-                .arg(uploadFileInfo->fileName)
-                .arg(uploadFileInfo->md5)
-                .arg(uploadFileInfo->size).toUtf8());
-    data.append("\r\n");
-    data.append("Content-Type: application/octet-stream");
-    data.append("\r\n");
-    data.append("\r\n");
-
-
-    //上传文件
-    data.append(file.readAll());
-    data.append("\r\n");
-    data.append(boundary.toUtf8());
-
-    if (file.isOpen()) {
-        file.close();
-    }
-
-    QString url = QString("http://%1:%2/upload").arg(login->ip()).arg(login->port());
-    QNetworkRequest request;
-    request.setUrl(url);
-    request.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("application/json"));
-
-    //发送http请求
-    QNetworkReply *reply = m_manager->post(request, data);
-    if (reply == NULL) {
-        qDebug() << "请求失败";
+    if (!uploadFileInfo) return;
+    
+    qDebug() << "開始實際文件上傳函數:" << uploadFileInfo->fileName;
+    
+    // 使用 QHttpMultiPart 標準格式（服務端已修正）
+    QFile *file = new QFile(uploadFileInfo->filePath);
+    if (!file->open(QIODevice::ReadOnly)) {
+        qDebug() << "無法開啟檔案:" << uploadFileInfo->filePath;
+        delete file;
         return;
     }
 
+    LoginInfoInstance *login = LoginInfoInstance::getInstance();
 
+    // 使用標準 QHttpMultiPart 格式
+    QHttpMultiPart *multi = new QHttpMultiPart(QHttpMultiPart::FormDataType);
+    
+    // 添加文字欄位
+    auto addText = [&](const QString &name, const QString &val) {
+        QHttpPart p;
+        p.setHeader(QNetworkRequest::ContentDispositionHeader,
+                    QVariant(QString("form-data; name=\"%1\"").arg(name)));
+        p.setBody(val.toUtf8());
+        multi->append(p);
+    };
 
-    //显示文件上传进度
-    connect(reply, &QNetworkReply::uploadProgress, this, [=](qint64 bytesSent, qint64 bytesTotal){
-        //bytesSent 上传的字节数
-        //bytesTotal 文件需要上传的总字节数
+    // 添加所有文字欄位
+    addText("user", login->user());
+    addText("token", login->token());
+    addText("filename", uploadFileInfo->fileName);
+    addText("md5", uploadFileInfo->md5);
+    addText("size", QString::number(uploadFileInfo->size));
 
-        if (bytesTotal != 0) {
-            //显示进度条(设置进度条)
+    // 添加文件欄位
+    QHttpPart filePart;
+    filePart.setHeader(QNetworkRequest::ContentDispositionHeader,
+                       QVariant(QString("form-data; name=\"file\"; filename=\"%1\"").arg(uploadFileInfo->fileName)));
+    filePart.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("application/octet-stream"));
+    filePart.setBodyDevice(file);
+    file->setParent(multi); // 讓 QHttpMultiPart 管理文件生命週期
+    multi->append(filePart);
+
+    QString url = QString("http://%1:%2/upload").arg(login->ip()).arg(login->port());
+    QNetworkRequest request;
+    request.setUrl(QUrl(url));
+    // 注意：不要手動設置 Content-Type，讓 QHttpMultiPart 自動處理
+
+    // 調試：輸出請求信息
+    qDebug() << "===== 上傳請求信息 =====";
+    qDebug() << "URL:" << url;
+    qDebug() << "文件大小:" << uploadFileInfo->size << "bytes";
+    qDebug() << "文件名:" << uploadFileInfo->fileName;
+    qDebug() << "MD5:" << uploadFileInfo->md5;
+    qDebug() << "用戶:" << login->user();
+    qDebug() << "Token:" << login->token();
+    qDebug() << "========================";
+
+    QNetworkReply *reply = m_manager->post(request, multi);
+    multi->setParent(reply); // 讓 QNetworkReply 管理 QHttpMultiPart 生命週期
+
+    if (reply == NULL) {
+        qDebug() << "請求失敗";
+        delete multi;
+        return;
+    }
+    
+    // 設置超時時間（30秒）
+    QTimer *timeoutTimer = new QTimer(reply);
+    timeoutTimer->setSingleShot(true);
+    connect(timeoutTimer, &QTimer::timeout, this, [=]() {
+        if (reply->isRunning()) {
+            qDebug() << "上傳請求超時:" << uploadFileInfo->fileName;
+            reply->abort();
+        }
+    });
+    timeoutTimer->start(30000);
+
+    // 顯示上傳進度
+    connect(reply, &QNetworkReply::uploadProgress, this, [=](qint64 bytesSent, qint64 bytesTotal) {
+        if (bytesTotal > 0) {
             uploadFileInfo->fdp->setProgress(bytesSent/1024, bytesTotal/1024);
         }
-
     });
 
-    connect(reply, &QNetworkReply::finished, this, [=](){
-        //文件上传完成后
+    // 錯誤處理
+    connect(reply, &QNetworkReply::errorOccurred, this, [=](QNetworkReply::NetworkError error) {
+        qDebug() << "上傳網絡錯誤:" << error;
+        qDebug() << "錯誤描述:" << reply->errorString();
+        qDebug() << "錯誤發生在文件:" << uploadFileInfo->fileName;
+        qDebug() << "HTTP狀態碼:" << reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        
+        // 輸出原始響應頭
+        qDebug() << "原始響應頭:";
+        auto headers = reply->rawHeaderList();
+        for (auto &h : headers) {
+            qDebug() << h << ":" << reply->rawHeader(h);
+        }
+        
+        reply->deleteLater();
+    });
+
+    // 完成處理
+    connect(reply, &QNetworkReply::finished, this, [=]() {
+        qDebug() << "文件上傳完成，檢查錯誤狀態";
+        
         if (reply->error() != QNetworkReply::NoError) {
-            qDebug() << reply->errorString();
+            qDebug() << "上傳錯誤:" << reply->errorString();
+            qDebug() << "錯誤代碼:" << reply->error();
+            uploadFileInfo->uploadStatus = UPLOAD_FAILD;
+            m_common->writeRecord(m_loginInfo->user(), uploadFileInfo->fileName, "009");
         } else {
             QByteArray json = reply->readAll();
-            qDebug() << "array:" <<QString(json);
-/*
-008: 上传成功
-009: 上传失败
-*/
+            qDebug() << "服務器返回數據:" << QString(json);
+            
             QString code = NetworkData::getCode(json);
             if (code == "008") {
-                qDebug() << "上传成功";
+                qDebug() << "上傳成功";
                 uploadFileInfo->uploadStatus = UPLOAD_FINISHED;
-
-                m_common->writeRecord(m_loginInfo->user(),
-                                      uploadFileInfo->fileName,
-                                      code);
-
-                //刷新
-                getMyFileCount();
-
+                m_common->writeRecord(m_loginInfo->user(), uploadFileInfo->fileName, code);
+                getMyFileCount(); // 刷新文件列表
             } else if (code == "009") {
-                qDebug() << "上传失败";
+                qDebug() << "上傳失敗";
                 uploadFileInfo->uploadStatus = UPLOAD_FAILD;
-
-                m_common->writeRecord(m_loginInfo->user(),
-                                      uploadFileInfo->fileName,
-                                      code);
+                m_common->writeRecord(m_loginInfo->user(), uploadFileInfo->fileName, code);
+            } else {
+                qDebug() << "未知返回代碼:" << code;
+                uploadFileInfo->uploadStatus = UPLOAD_FAILD;
+                m_common->writeRecord(m_loginInfo->user(), uploadFileInfo->fileName, code.isEmpty() ? "009" : code);
             }
-
-            //获取到上传任务列表
-            UploadTask *uploadTask = UploadTask::getInstance();
-            //删除任务
-            uploadTask->delUploadTask();
-
         }
+
+        // 刪除任務
+        UploadTask::getInstance()->delUploadTask();
         reply->deleteLater();
     });
 }
 
 void MyFileWidget::uploadFile()
 {
-    //选择文件
+    // 選擇文件
     QString filePath = QFileDialog::getOpenFileName();
+    if (filePath.isEmpty()) {
+        qDebug() << "未選擇文件";
+        return;
+    }
+    
     qDebug() << "filePath:" << filePath;
 
-    //上传文件到服务器
-
-/*
-------WebKitFormBoundaryDQAR0QX1ojAyzAre\r\n
-Content-Disposition: form-data; name="file"; filename="logo.png"\r\n
-Content-Type: image/png\r\n
-\r\n
-真正的文件内容\r\n
-------WebKitFormBoundaryDQAR0QX1ojAyzAre
-*/
-
-    QFile file(filePath);
-    file.open(QIODevice::ReadOnly | QIODevice::Text);
-
-    //截取字符串
+    // 截取文件名
     int pos = filePath.lastIndexOf("/", -1) + 1;
     qDebug() << "pos:" << pos;
     QString fileName = filePath.mid(pos);
     qDebug() << "fileName:" << fileName;
 
-    LoginInfoInstance *login = LoginInfoInstance::getInstance();
-
-    QString boundary = m_common->getBoundary();
-    QByteArray data;
-    data.append(boundary.toUtf8());
-    data.append("\r\n");
-
-    data.append("Content-Disposition: form-data; ");
-    data.append(QString("user=\"%1\" filename=\"%2\" md5=\"%3\" size=%4")
-                .arg(login->user())
-                .arg(fileName)
-                .arg(m_common->getFileMd5(filePath))
-                .arg(file.size()).toUtf8());
-    data.append("\r\n");
-    data.append("Content-Type: application/octet-stream");
-    data.append("\r\n");
-    data.append("\r\n");
-
-
-    //上传文件
-    data.append(file.readAll());
-    data.append("\r\n");
-    data.append(boundary.toUtf8());
-
-    if (file.isOpen()) {
-        file.close();
-    }
-
-    QString url = QString("http://%1:%2/upload").arg(login->ip()).arg(login->port());
-    QNetworkRequest request;
-    request.setUrl(url);
-    request.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("application/json"));
-
-    //发送http请求
-    QNetworkReply *reply = m_manager->post(request, data);
-    if (reply == NULL) {
-        qDebug() << "请求失败";
+    // 使用 QHttpMultiPart 標準格式（服務端已修正）
+    QFile *file = new QFile(filePath);
+    if (!file->open(QIODevice::ReadOnly)) {
+        qDebug() << "無法開啟檔案:" << filePath;
+        delete file;
         return;
     }
 
-    connect(reply, &QNetworkReply::finished, this, [=](){
-        //文件上传完成后
-        if (reply->error() != QNetworkReply::NoError) {
-            qDebug() << reply->errorString();
-        } else {
-            QByteArray json = reply->readAll();
-            qDebug() << "array:" <<QString(json);
-/*
-008: 上传成功
-009: 上传失败
-*/
-            QString code = NetworkData::getCode(json);
-            if (code == "008") {
-                qDebug() << "上传成功";
+    LoginInfoInstance *login = LoginInfoInstance::getInstance();
 
-                /*
-                //login_bk.jpg
-                int spos = fileName.lastIndexOf(".", -1) + 1;
-                qDebug() << "pos:" << spos;
-                QString suffixName = fileName.mid(spos);
-                qDebug() << "suffixName:" << suffixName;
-                QString fileTypeName = QString("%1.png").arg(suffixName);
-                qDebug() << "fileTypeName:" << fileTypeName;
-                QString imageName = m_common->getFileType(fileTypeName);
-                qDebug() << "imageName:" << imageName;
-                QString filePath = QString("%1/%2").arg(FILE_TYPE_DIR).arg(imageName);
-                qDebug() << "imageName:" << imageName;
+    // 使用標準 QHttpMultiPart 格式
+    QHttpMultiPart *multi = new QHttpMultiPart(QHttpMultiPart::FormDataType);
+    
+    // 添加文字欄位
+    auto addText = [&](const QString &name, const QString &val) {
+        QHttpPart p;
+        p.setHeader(QNetworkRequest::ContentDispositionHeader,
+                    QVariant(QString("form-data; name=\"%1\"").arg(name)));
+        p.setBody(val.toUtf8());
+        multi->append(p);
+    };
 
-                //添加items(图片/文字)到listWidget
-                ui->listWidget->addItem(new QListWidgetItem(QIcon(filePath), fileName));
-                */
+    // 添加所有文字欄位
+    addText("user", login->user());
+    addText("token", login->token());
+    addText("filename", fileName);
+    addText("md5", m_common->getFileMd5(filePath));
+    addText("size", QString::number(file->size()));
 
-                //刷新
-                getMyFileCount();
+    // 添加文件欄位
+    QHttpPart filePart;
+    filePart.setHeader(QNetworkRequest::ContentDispositionHeader,
+                       QVariant(QString("form-data; name=\"file\"; filename=\"%1\"").arg(fileName)));
+    filePart.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("application/octet-stream"));
+    filePart.setBodyDevice(file);
+    file->setParent(multi); // 讓 QHttpMultiPart 管理文件生命週期
+    multi->append(filePart);
 
-            } else if (code == "009") {
-                qDebug() << "上传失败";
-            }
+    QString url = QString("http://%1:%2/upload").arg(login->ip()).arg(login->port());
+    QNetworkRequest request;
+    request.setUrl(QUrl(url));
+    // 注意：不要手動設置 Content-Type，讓 QHttpMultiPart 自動處理
 
+    QNetworkReply *reply = m_manager->post(request, multi);
+    multi->setParent(reply); // 讓 QNetworkReply 管理 QHttpMultiPart 生命週期
+
+    if (reply == NULL) {
+        qDebug() << "請求失敗";
+        delete multi;
+        return;
+    }
+    
+    // 設置超時時間（30秒）
+    QTimer *timeoutTimer = new QTimer(reply);
+    timeoutTimer->setSingleShot(true);
+    connect(timeoutTimer, &QTimer::timeout, this, [=]() {
+        if (reply->isRunning()) {
+            qDebug() << "上傳請求超時:" << fileName;
+            reply->abort();
         }
+    });
+    timeoutTimer->start(30000);
+
+    // 錯誤處理
+    connect(reply, &QNetworkReply::errorOccurred, this, [=](QNetworkReply::NetworkError error) {
+        qDebug() << "上傳網絡錯誤:" << error;
+        qDebug() << "錯誤描述:" << reply->errorString();
+        qDebug() << "錯誤發生在文件:" << fileName;
+        qDebug() << "HTTP狀態碼:" << reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        
+        // 輸出原始響應頭
+        qDebug() << "原始響應頭:";
+        auto headers = reply->rawHeaderList();
+        for (auto &h : headers) {
+            qDebug() << h << ":" << reply->rawHeader(h);
+        }
+        
         reply->deleteLater();
     });
 
-
+    // 完成處理
+    connect(reply, &QNetworkReply::finished, this, [=]() {
+        qDebug() << "文件上傳完成，檢查錯誤狀態:" << fileName;
+        
+        if (reply->error() != QNetworkReply::NoError) {
+            qDebug() << "上傳錯誤:" << reply->errorString();
+            qDebug() << "錯誤代碼:" << reply->error();
+        } else {
+            QByteArray json = reply->readAll();
+            qDebug() << "服務器返回數據:" << QString(json);
+            
+            QString code = NetworkData::getCode(json);
+            if (code == "008") {
+                qDebug() << "上傳成功:" << fileName;
+                getMyFileCount(); // 刷新文件列表
+            } else if (code == "009") {
+                qDebug() << "上傳失敗:" << fileName;
+            } else {
+                qDebug() << "未知返回代碼:" << code << "文件:" << fileName;
+            }
+        }
+        
+        reply->deleteLater();
+    });
 }
 
 //显示右键菜单

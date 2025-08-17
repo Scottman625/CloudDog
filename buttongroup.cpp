@@ -46,13 +46,16 @@ ButtonGroup::ButtonGroup(QWidget *parent) :
     m_map.insert(ui->btnDownload->text(), ui->btnDownload);
     m_map.insert(ui->btnTransform->text(), ui->btnTransform);
 
+    qDebug() << "設置信號映射，按鈕文本:";
     QMap<QString, QToolButton*>::iterator iter = m_map.begin();
     for (; iter != m_map.end(); iter++) {
+        qDebug() << "按鈕:" << iter.value()->objectName() << "文本:" << iter.key();
         m_mapper->setMapping(iter.value(), iter.key());
-        connect(iter.value(), SIGNAL(clicked(bool)), m_mapper, SLOT(map()));
+        connect(iter.value(), &QToolButton::clicked, m_mapper, QOverload<>::of(&QSignalMapper::map));
     }
 
-    connect(m_mapper, SIGNAL(mapped(QString)), this , SLOT(onMapperButtonsClicked(QString)));
+    connect(m_mapper, QOverload<const QString &>::of(&QSignalMapper::mappedString), 
+            this, &ButtonGroup::onMapperButtonsClicked);
 
 
 /*
@@ -109,29 +112,47 @@ void ButtonGroup::onMapperButtonsClicked(QString text) { //点击下载榜
     for (; iter != m_map.end(); iter++) {
         if (iter.key() == text) {
             btnTemp = (*iter);
+            break;  // 找到後立即跳出循環
         }
     }
 
-    if (btnTemp == m_curBtn) {
+    if (btnTemp == nullptr) {
+        qDebug() << "未找到按鈕:" << text;
         return;
     }
 
-    qDebug() << "m_curBtn1:" << m_curBtn->objectName();
+    if (btnTemp == m_curBtn) {
+        qDebug() << "按鈕已經是當前選中狀態:" << text;
+        return;
+    }
+
+    qDebug() << "切換按鈕從:" << m_curBtn->objectName() << "到:" << btnTemp->objectName();
+    qDebug() << "按鈕文本:" << text;
+    
+    //1. 設定舊按鈕顏色為黑色
     m_curBtn->setStyleSheet("color:black");
-    //1. 目前按鈕設定選中顏色
+    
+    //2. 更新當前按鈕
     m_curBtn = btnTemp;
-    qDebug() << "m_curBtn2:" << m_curBtn->objectName();
+    
+    //3. 設定新按鈕顏色為白色
     m_curBtn->setStyleSheet("color:white");
 
-    //2. 發送信號
+    //4. 發送信號
     if (text == ui->btnMyFile->text()) {
+        qDebug() << "發送 sigMyFile 信號";
         emit sigMyFile();
     } else if (text == ui->btnShare->text()) {
+        qDebug() << "發送 sigShare 信號";
         emit sigShare();
     } else if (text == ui->btnDownload->text()) {
+        qDebug() << "發送 sigDownload 信號";
         emit sigDownload();
     } else if (text == ui->btnTransform->text()) {
+        qDebug() << "發送 sigTransform 信號";
         emit sigTransform();
+    } else {
+        qDebug() << "未知按鈕文本:" << text;
     }
 }
 

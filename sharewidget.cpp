@@ -505,7 +505,7 @@ void ShareWidget::getShareFilesCount()
     //http://192.168.52.139/sharefiles?cmd=count
     QString url = QString("http://%1:%2/sharefiles?cmd=count").arg(ip).arg(port);
     request.setUrl(url);
-    request.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("application/json"));
+    // 根據API文檔，count接口不需要Content-Type header
 
     QNetworkReply *reply = m_manager->get(request);
 
@@ -513,20 +513,32 @@ void ShareWidget::getShareFilesCount()
     connect(reply, &QNetworkReply::readyRead, this, [=](){
         //读数据
         QByteArray data = reply->readAll();
-        qDebug() << "服务器返回数据:" << QString(data);
+        qDebug() << "共享文件數量API返回數據:" << QString(data);
 
         m_shareFilesCount = NetworkData::getCount(data);
+        qDebug() << "解析到的共享文件數量:" << m_shareFilesCount;
+        
         if (m_shareFilesCount > 0) {
             //请求用户文件信息
+            qDebug() << "開始獲取共享文件列表";
             getShareFilesList();
         } else {
             //共享文件数量等于0
+            qDebug() << "沒有共享文件，清空列表";
             refreshFileItems();
         }
 
         //立即销毁
         reply->deleteLater();
 
+    });
+    
+    // 添加錯誤處理
+    connect(reply, &QNetworkReply::errorOccurred,
+            this, [=](QNetworkReply::NetworkError error) {
+        qDebug() << "共享文件數量API請求錯誤:" << error;
+        qDebug() << "錯誤描述:" << reply->errorString();
+        reply->deleteLater();
     });
 
 }
@@ -562,13 +574,13 @@ void ShareWidget::getShareFilesList()
     connect(reply, &QNetworkReply::readyRead, this, [=](){
         //读数据
         QByteArray data = reply->readAll();
-        qDebug() << "服务器返回数据:" << QString(data);
+        qDebug() << "共享文件列表API返回數據:" << QString(data);
 
         //清空m_fileList
         clearFileList();
 
         m_fileList = NetworkData::getFileInfo(data);
-        qDebug() << "m_fileList size()" << m_fileList.size();
+        qDebug() << "解析到的文件列表大小:" << m_fileList.size();
 
         //立即销毁
         reply->deleteLater();
@@ -579,6 +591,14 @@ void ShareWidget::getShareFilesList()
         //在ui->listWidget显示图标
         showFileItems();
 
+    });
+    
+    // 添加錯誤處理
+    connect(reply, &QNetworkReply::errorOccurred,
+            this, [=](QNetworkReply::NetworkError error) {
+        qDebug() << "共享文件列表API請求錯誤:" << error;
+        qDebug() << "錯誤描述:" << reply->errorString();
+        reply->deleteLater();
     });
 
 }
