@@ -7,6 +7,7 @@
 *****************************************************************************/
 
 #include "../../../mainwindow.h"
+#include <QtNetwork/QSslError>
 #include <QtCore/qmetatype.h>
 
 #include <QtCore/qtmochelpers.h>
@@ -38,10 +39,24 @@ template <> constexpr inline auto MainWindow::qt_create_metaobjectdata<qt_meta_t
 {
     namespace QMC = QtMocConstants;
     QtMocHelpers::StringRefStorage qt_stringData {
-        "MainWindow"
+        "MainWindow",
+        "sigChangeUser",
+        "",
+        "sigLoginAgain",
+        "onGotoTransform",
+        "TransformStatus",
+        "status"
     };
 
     QtMocHelpers::UintData qt_methods {
+        // Signal 'sigChangeUser'
+        QtMocHelpers::SignalData<void()>(1, 2, QMC::AccessPublic, QMetaType::Void),
+        // Signal 'sigLoginAgain'
+        QtMocHelpers::SignalData<void()>(3, 2, QMC::AccessPublic, QMetaType::Void),
+        // Slot 'onGotoTransform'
+        QtMocHelpers::SlotData<void(TransformStatus)>(4, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { 0x80000000 | 5, 6 },
+        }}),
     };
     QtMocHelpers::UintData qt_properties {
     };
@@ -63,10 +78,20 @@ Q_CONSTINIT const QMetaObject MainWindow::staticMetaObject = { {
 void MainWindow::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void **_a)
 {
     auto *_t = static_cast<MainWindow *>(_o);
-    (void)_t;
-    (void)_c;
-    (void)_id;
-    (void)_a;
+    if (_c == QMetaObject::InvokeMetaMethod) {
+        switch (_id) {
+        case 0: _t->sigChangeUser(); break;
+        case 1: _t->sigLoginAgain(); break;
+        case 2: _t->onGotoTransform((*reinterpret_cast< std::add_pointer_t<TransformStatus>>(_a[1]))); break;
+        default: ;
+        }
+    }
+    if (_c == QMetaObject::IndexOfMethod) {
+        if (QtMocHelpers::indexOfMethod<void (MainWindow::*)()>(_a, &MainWindow::sigChangeUser, 0))
+            return;
+        if (QtMocHelpers::indexOfMethod<void (MainWindow::*)()>(_a, &MainWindow::sigLoginAgain, 1))
+            return;
+    }
 }
 
 const QMetaObject *MainWindow::metaObject() const
@@ -85,6 +110,30 @@ void *MainWindow::qt_metacast(const char *_clname)
 int MainWindow::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
 {
     _id = QMainWindow::qt_metacall(_c, _id, _a);
+    if (_id < 0)
+        return _id;
+    if (_c == QMetaObject::InvokeMetaMethod) {
+        if (_id < 3)
+            qt_static_metacall(this, _c, _id, _a);
+        _id -= 3;
+    }
+    if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
+        if (_id < 3)
+            *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType();
+        _id -= 3;
+    }
     return _id;
+}
+
+// SIGNAL 0
+void MainWindow::sigChangeUser()
+{
+    QMetaObject::activate(this, &staticMetaObject, 0, nullptr);
+}
+
+// SIGNAL 1
+void MainWindow::sigLoginAgain()
+{
+    QMetaObject::activate(this, &staticMetaObject, 1, nullptr);
 }
 QT_WARNING_POP

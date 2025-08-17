@@ -12,10 +12,14 @@
 #include <QtCore/QVariant>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QMainWindow>
-#include <QtWidgets/QMenuBar>
-#include <QtWidgets/QStatusBar>
-#include <QtWidgets/QToolBar>
+#include <QtWidgets/QStackedWidget>
+#include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QWidget>
+#include <downloadwidget.h>
+#include <sharewidget.h>
+#include <transformwidget.h>
+#include "buttongroup.h"
+#include "myfilewidget.h"
 
 QT_BEGIN_NAMESPACE
 
@@ -23,30 +27,54 @@ class Ui_MainWindow
 {
 public:
     QWidget *centralWidget;
-    QMenuBar *menuBar;
-    QToolBar *mainToolBar;
-    QStatusBar *statusBar;
+    QVBoxLayout *verticalLayout;
+    ButtonGroup *button_group;
+    QStackedWidget *stackedWidget;
+    MyFileWidget *myFile_page;
+    ShareWidget *share_page;
+    DownloadWidget *download_page;
+    TransformWidget *transform_page;
 
     void setupUi(QMainWindow *MainWindow)
     {
         if (MainWindow->objectName().isEmpty())
             MainWindow->setObjectName("MainWindow");
-        MainWindow->resize(400, 300);
+        MainWindow->resize(800, 600);
         centralWidget = new QWidget(MainWindow);
         centralWidget->setObjectName("centralWidget");
+        verticalLayout = new QVBoxLayout(centralWidget);
+        verticalLayout->setSpacing(0);
+        verticalLayout->setContentsMargins(11, 11, 11, 11);
+        verticalLayout->setObjectName("verticalLayout");
+        verticalLayout->setContentsMargins(0, 0, 0, 0);
+        button_group = new ButtonGroup(centralWidget);
+        button_group->setObjectName("button_group");
+
+        verticalLayout->addWidget(button_group);
+
+        stackedWidget = new QStackedWidget(centralWidget);
+        stackedWidget->setObjectName("stackedWidget");
+        myFile_page = new MyFileWidget();
+        myFile_page->setObjectName("myFile_page");
+        stackedWidget->addWidget(myFile_page);
+        share_page = new ShareWidget();
+        share_page->setObjectName("share_page");
+        stackedWidget->addWidget(share_page);
+        download_page = new DownloadWidget();
+        download_page->setObjectName("download_page");
+        stackedWidget->addWidget(download_page);
+        transform_page = new TransformWidget();
+        transform_page->setObjectName("transform_page");
+        stackedWidget->addWidget(transform_page);
+
+        verticalLayout->addWidget(stackedWidget);
+
         MainWindow->setCentralWidget(centralWidget);
-        menuBar = new QMenuBar(MainWindow);
-        menuBar->setObjectName("menuBar");
-        menuBar->setGeometry(QRect(0, 0, 400, 22));
-        MainWindow->setMenuBar(menuBar);
-        mainToolBar = new QToolBar(MainWindow);
-        mainToolBar->setObjectName("mainToolBar");
-        MainWindow->addToolBar(Qt::ToolBarArea::TopToolBarArea, mainToolBar);
-        statusBar = new QStatusBar(MainWindow);
-        statusBar->setObjectName("statusBar");
-        MainWindow->setStatusBar(statusBar);
 
         retranslateUi(MainWindow);
+
+        stackedWidget->setCurrentIndex(2);
+
 
         QMetaObject::connectSlotsByName(MainWindow);
     } // setupUi

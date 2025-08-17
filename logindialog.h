@@ -3,6 +3,8 @@
 
 #include <QDialog>
 #include <common.h>
+#include "mainwindow.h"
+#include <QNetworkAccessManager>
 
 namespace Ui {
 class LoginDialog;
@@ -34,9 +36,12 @@ private slots:
 
 private:
     Ui::LoginDialog *ui;
+    MainWindow *m_mainwindow;
     Common *m_common;
+    QNetworkAccessManager *m_manager;
     void readConf();
     void serverSet();
+    void saveLoginInfoData(QString username, QString token, QString ip, QString port);
 };
 
 #endif // LOGINDIALOG_H

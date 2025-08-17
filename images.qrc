@@ -7,5 +7,24 @@
         <file>images/login_setting.png</file>
         <file>images/logo.ico</file>
         <file>images/logo.png</file>
+        <file>images/main/window/title_close.png</file>
+        <file>images/main/window/title_max.png</file>
+        <file>images/main/window/title_min.png</file>
+        <file>images/main/window/title_normal.png</file>
+        <file>images/main/bk_bottom.png</file>
+        <file>images/main/bk_page.png</file>
+        <file>images/main/bk_top.png</file>
+        <file>images/main/title_change.png</file>
+        <file>images/main/title_data.png</file>
+        <file>images/main/title_file.png</file>
+        <file>images/main/title_hot.png</file>
+        <file>images/main/title_share.png</file>
+        <file>images/main/title_user.png</file>
+        <file>images/main/upload.png</file>
+        <file>images/utils/upload.jpg</file>
+        <file>images/utils/close.png</file>
+        <file>images/utils/My.png</file>
+        <file>images/utils/small.png</file>
+        <file>images/utils/settings.png</file>
     </qresource>
 </RCC>

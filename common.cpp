@@ -9,9 +9,10 @@
 #include <QDebug>
 
 Common* Common::m_instance = new Common;
-Common::Common()
+Common::Common(QObject *parent) : QObject(parent)
 {
-
+    m_manager = new QNetworkAccessManager();
+    getFileTypeList();
 }
 
 Common* Common::getInstance()
@@ -316,4 +317,242 @@ void Common::writeLoginInfo(QString user, QString pwd, bool isRemeber, QString p
      file.write(jsonDocument.toJson());
      file.close();
 
+ }
+
+ QString Common::getFileMd5(QString filePath)
+ {
+     QFile localFile(filePath);
+
+     if (!localFile.open(QFile::ReadOnly))
+     {
+         qDebug() << "file open error.";
+         return 0;
+     }
+
+     QCryptographicHash ch(QCryptographicHash::Md5);
+
+     quint64 totalBytes = 0;
+     quint64 bytesWritten = 0;
+     quint64 bytesToWrite = 0;
+     quint64 loadSize = 1024 * 4;
+     QByteArray buf;
+
+     totalBytes = localFile.size();
+     bytesToWrite = totalBytes;
+
+     while (1)
+     {
+         if(bytesToWrite > 0)
+         {
+             buf = localFile.read(qMin(bytesToWrite, loadSize));
+             ch.addData(buf);
+             bytesWritten += buf.length();
+             bytesToWrite -= buf.length();
+             buf.resize(0);
+         }
+         else
+         {
+             break;
+         }
+
+         if(bytesWritten == totalBytes)
+         {
+             break;
+         }
+     }
+
+     if (localFile.isOpen()) {
+         localFile.close();
+     }
+     QByteArray md5 = ch.result();
+     return md5.toHex();
+ }
+
+#include <QRandomGenerator>
+#include <QDebug>
+
+ QString Common::getBoundary() {
+     // 隨機生成16個字符
+     const char randoms[] = {'0','1','2','3','4','5','6','7','8','9',
+                             'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z',
+                             'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'};
+
+     QString temp;
+     int len = sizeof(randoms) / sizeof(randoms[0]); // 使用 sizeof 而不是 strlen
+
+     for (int i = 0; i < 16; i++) {
+         int randIndex = QRandomGenerator::global()->bounded(len);
+         temp += randoms[randIndex]; // 使用 += 而不是 []
+     }
+
+     qDebug() << "temp:" << temp;
+
+     QString boundary = "------WebKitFormBoundary" + temp;
+     return boundary;
+ }
+
+
+ QNetworkAccessManager* Common::getNetworkAccessManager()
+ {
+     return m_manager;
+ }
+
+ //读取conf/fileType文件夹，得到文件夹中的所有文件名，保存在m_fileTypeList
+ void Common::getFileTypeList()
+ {
+     QDir dir(FILE_TYPE_DIR);
+     if (!dir.exists()) {
+         dir.mkpath(FILE_TYPE_DIR);
+         qDebug() << FILE_TYPE_DIR << "创建成功";
+     }
+
+     /*
+            QDir::Dirs      列出目录；
+            QDir::AllDirs   列出所有目录，不对目录名进行过滤；
+            QDir::Files     列出文件；
+            QDir::Drives    列出逻辑驱动器名称，该枚举变量在Linux/Unix中将被忽略；
+            QDir::NoSymLinks        不列出符号链接；
+            QDir::NoDotAndDotDot    不列出文件系统中的特殊文件.及..；
+            QDir::NoDot             不列出.文件，即指向当前目录的软链接
+            QDir::NoDotDot          不列出..文件；
+            QDir::AllEntries        其值为Dirs | Files | Drives，列出目录、文件、驱动器及软链接等所有文件；
+            QDir::Readable      列出当前应用有读权限的文件或目录；
+            QDir::Writable      列出当前应用有写权限的文件或目录；
+            QDir::Executable    列出当前应用有执行权限的文件或目录；
+            Readable、Writable及Executable均需要和Dirs或Files枚举值联合使用；
+            QDir::Modified      列出已被修改的文件，该值在Linux/Unix系统中将被忽略；
+            QDir::Hidden        列出隐藏文件；
+            QDir::System        列出系统文件；
+            QDir::CaseSensitive 设定过滤器为大小写敏感。
+        */
+     dir.setFilter(QDir::Files | QDir::NoDot | QDir::NoDotDot | QDir::NoDotAndDotDot | QDir::NoSymLinks);
+     dir.setSorting(QDir::Size); //排序
+
+     //遍历文件夹(conf/fileType)
+     QFileInfoList fileInfoList = dir.entryInfoList();
+     for (int i=0;i<fileInfoList.size(); i++) {
+         QFileInfo fileInfo = fileInfoList.at(i);
+         m_fileTypeList.append(fileInfo.fileName());
+     }
+ }
+
+ //根据文件名，从m_fileTypeList查找，如果能找到，返回此类型，如果不能找到,返回other.png
+ //fileTypeName  cpp.png/dll.png
+ QString Common::getFileType(QString fileTypeName)
+ {
+     if (m_fileTypeList.contains(fileTypeName))
+     {
+         //如果能找到
+         return fileTypeName;
+     } else {
+         return "other.png";
+     }
+ }
+
+ void Common::writeRecord(QString user, QString fileName, QString code, QString path /*="conf/record"*/)
+ {
+     // conf/record/milo.txt
+     QString userFilePath = QString("%1/%2.txt").arg(path).arg(user);
+     qDebug() << "userFilePath:" << userFilePath;
+
+     QDir dir(path);
+     if (!dir.exists()) {
+         //目录不存在,创建目录
+         if (dir.mkpath(path)) {
+             qDebug() << "目录创建成功";
+         } else {
+             qDebug() << "目录创建失败";
+         }
+     }
+
+     QByteArray array;
+     QFile file(userFilePath);
+     if (file.exists()) {
+         //如果存在, 先读取文件原来的内容
+
+         if (!file.open(QIODevice::ReadOnly)) {
+             //如果打开失败
+             qDebug() << "file.open(QIODevice::ReadOnly) err";
+             if (file.isOpen()) {
+                 file.close();
+             }
+             return;
+         }
+
+         array = file.readAll();
+
+         if (file.isOpen()) {
+             file.close();
+         }
+     }
+
+     if (!file.open(QIODevice::WriteOnly)) {
+         //如果打开失败
+         qDebug() << "file.open(QIODevice::WriteOnly) err";
+         if (file.isOpen()) {
+             file.close();
+         }
+         return;
+     }
+
+     //记录写入文件
+     //xxx.jpg   2020/11/20 16:02:01 上传成功
+
+     QDateTime time = QDateTime::currentDateTime(); //获取系统当前时间
+     QString timeStr = time.toString("yyyy/MM/dd hh:mm:ss"); //时间格式化
+     QString actionString = getActionStrring(code);
+
+     //记录到文件的内容
+     QString str = QString("%1\t%2\t%3\r\n").arg(fileName).arg(timeStr).arg(actionString);
+     qDebug() << "str:" << str;
+
+     //toLocal8Bit转为本地字符串
+     file.write(str.toLocal8Bit());
+     if (!array.isEmpty()) {
+         //读取到文件内容不为空的时候
+         file.write(array);
+     }
+
+     if (file.isOpen()) {
+         file.close();
+     }
+ }
+
+ QString Common::getActionStrring(QString code) {
+     /*
+    005：上传的文件已存在
+    006: 秒传成功
+    007: 秒传失败
+    008: 上传成功
+    009: 上传失败
+    090: 下载成功
+    091: 下载失败
+    */
+     QString str;
+     if (code == "005") {
+         str = "上传的文件已存在";
+     } else if (code == "006") {
+         str = "秒传成功";
+     } else if (code == "007") {
+         str = "秒传失败";
+     } else if (code == "008") {
+         str = "上传成功";
+     } else if (code == "009") {
+         str = "上传失败";
+     } else if (code == "090") {
+         str = "下载成功";
+     } else if (code == "091") {
+         str = "下载失败";
+     }
+
+     return str;
+ }
+
+
+ void Common::sleep(unsigned int msec)
+ {
+     QTime dieTime = QTime::currentTime().addMSecs(msec);
+     while (QTime::currentTime() < dieTime) {
+         QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+     }
  }

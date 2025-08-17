@@ -1,5 +1,6 @@
 #include "logindialog.h"
 #include "ui_logindialog.h"
+#include "logininfoinstance.h"
 #include <QPainter>
 #include <QDebug>
 #include <QRegularExpression>
@@ -15,11 +16,19 @@
 
 LoginDialog::LoginDialog(QWidget *parent) :
     QDialog(parent),
-    ui(new Ui::LoginDialog)
+    ui(new Ui::LoginDialog),
+    m_mainwindow(nullptr)  // 初始化為 nullptr
 {
     ui->setupUi(this);
 
     m_common = Common::getInstance();
+
+    // 創建 MainWindow 實例
+    m_mainwindow = new MainWindow();
+
+    // 連接信號
+    connect(m_mainwindow, &MainWindow::sigChangeUser, this, &LoginDialog::show);
+    connect(m_mainwindow, &MainWindow::sigLoginAgain, this, &LoginDialog::show);
 
     //去掉標題欄
     this->setWindowFlags(Qt::FramelessWindowHint | windowFlags());
@@ -137,6 +146,19 @@ void LoginDialog::closeButton()
     }
 }
 
+void LoginDialog::saveLoginInfoData(QString username, QString token, QString ip, QString port) {
+    //跳轉到其他頁面
+    //保存數據, token, user, ip, 端口
+    //除了登入外：每一個請求都需要校驗token，每一個請求都需要帶token
+    LoginInfoInstance *loginInfo = LoginInfoInstance::getInstance();
+    qDebug() << "token:" << token;
+
+    loginInfo->setUser(username);
+    loginInfo->setToken(token);
+    loginInfo->setIp(ip);
+    loginInfo->setPort(port);
+}
+
 void LoginDialog::on_login_clicked()
 {
     qDebug() << "start login...";
@@ -236,6 +258,15 @@ void LoginDialog::on_login_clicked()
                     }
                     m_common->writeLoginInfo(username, password, isCheck);
                     // 跳轉到其他頁面
+                    //保存用户資料
+                    //獲取token
+                    QJsonValue tokenValue = rootObj.value("token");
+                    saveLoginInfoData(username, tokenValue.toString(), ip, port);
+
+                    //跳到主界面,并初始化
+                    m_mainwindow->init(username);
+                    m_mainwindow->show();
+                    this->hide();
                 } else if (code == "001") {
                     QMessageBox::critical(this, "錯誤", "登入失敗");
                 } else {
